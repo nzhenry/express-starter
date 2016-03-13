@@ -22,6 +22,6 @@ stop-containers:
 	@docker exec express-starter-tmp bash -c 'kill $$(pidof gulp)' || true
 	@docker stop express-starter-selenium-server || true
 deploy:
-	@docker stop express-starter || true
+	@docker exec express-starter bash -c 'kill $$(pidof gulp)' || true
 	@docker rm express-starter || true
 	@docker run -d --name express-starter -e VIRTUAL_HOST=express-starter.livehen.com -e VIRTUAL_PORT=3000 express-starter

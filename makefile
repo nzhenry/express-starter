@@ -24,4 +24,4 @@ stop-containers:
 deploy:
 	@docker stop express-starter || true
 	@docker rm express-starter || true
-	@docker run -d --name express-starter -e VIRTUAL_HOST=express-starter.livehen.com -e VIRTUAL_PORT=3000 express-starter-img
+	@docker run -d --name express-starter -e VIRTUAL_HOST=express-starter.livehen.com -e VIRTUAL_PORT=3000 express-starter

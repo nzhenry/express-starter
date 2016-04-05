@@ -1,27 +1,56 @@
-ci: remove-containers build-image startup-app run-tests remove-unused-images stop-containers
+ci: remove-unused-images remove-containers build-image run-tests stop-containers
 
 cd: ci deploy
 
-remove-containers:
-	@docker rm express-starter-test || true
-	@docker rm express-starter-tmp || true
-	@docker rm express-starter-selenium-server || true
-build-image:
-	@docker build -t express-starter .
-startup-app:
-	@docker run -d	--name express-starter-tmp express-starter
-run-tests:
-	@docker run -d --name express-starter-selenium-server --link express-starter-tmp selenium/standalone-firefox
-	@docker run -dit --name express-starter-test --link express-starter-selenium-server express-starter bash
-	@docker exec express-starter-test npm test || true
-	@docker exec express-starter-test bash -c 'cat test_reports/*.xml' > test_report.xml
+cd-dev: ci deploy-dev
+
 remove-unused-images:
-	@docker rmi $$(docker images -q) || true
+	@echo
+	@echo Removing all unused docker images
+	@docker rmi $$(docker images -q --filter 'dangling=true') || true
+remove-containers:
+	@echo
+	@echo Removing old docker containers
+	@docker rm starter-test || true
+	@docker rm starter-tmp || true
+	@docker rm starter-selenium-firefox || true
+build-image:
+	@echo
+	@echo Building new docker image
+	@rm -rf artifacts || true
+	docker build -t starter .
+run-tests:
+	@echo
+	@echo Starting up app container for testing
+	docker run -d --name starter-tmp starter
+	@echo
+	@echo Starting up Selenium standalone server
+	docker run -d --name starter-selenium-firefox --link starter-tmp selenium/standalone-firefox
+	@echo
+	@echo Starting up test harness
+	docker run -dit --name starter-test --link starter-selenium-firefox starter bash
+	@echo
+	@echo Running tests
+	@docker exec starter-test npm test || true
+	@docker cp starter-test:/usr/src/app/artifacts . || true
 stop-containers:
-	@docker stop express-starter-test || true
-	@docker exec express-starter-tmp bash -c 'kill $$(pidof gulp)' || true
-	@docker stop express-starter-selenium-server || true
+	@echo
+	@echo Stopping test containers
+	@docker stop starter-test || true
+	@docker exec starter-tmp bash -c 'kill $$(pidof gulp)' || true
+	@docker stop starter-selenium-firefox || true
 deploy:
-	@docker exec express-starter bash -c 'kill $$(pidof gulp)' || true
-	@docker rm express-starter || true
-	@docker run -d --name express-starter -e VIRTUAL_HOST=express-starter.livehen.com -e VIRTUAL_PORT=3000 express-starter
+	@echo
+	@echo Deploying app
+	@docker exec starter bash -c 'kill $$(pidof gulp)' || true
+	@sleep 1
+	@docker rm starter || true
+	docker run -d --name starter -e VIRTUAL_HOST=starter.livehen.com -e VIRTUAL_PORT=3000 starter
+deploy-dev:
+	@echo
+	@echo Deploying app
+	@docker exec starter bash -c 'kill $$(pidof gulp)' || true
+	@sleep 1
+	@docker rm starter || true
+	docker run -d --name starter -p 3000:3000 starter
+
